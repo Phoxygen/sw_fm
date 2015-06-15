@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/Phoxygen/sw_fm.png?label=ready&title=Ready)](https://waffle.io/Phoxygen/sw_fm)
 [![Build Status](https://travis-ci.org/fxos/contacts.svg?branch=master)](https://travis-ci.org/fxos/contacts)
 
 # Contacts
