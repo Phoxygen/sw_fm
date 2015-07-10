@@ -354,7 +354,7 @@ function createNewClient(name, version) {
  */
 
 function debug() {
-  //console.log.bind(console, '[client]').apply(console, arguments);
+  console.log.bind(console, '[client]').apply(console, arguments);
 }
 
 function mutatePrototype(object, prototype) {

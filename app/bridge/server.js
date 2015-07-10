@@ -56,12 +56,9 @@ function createServer(name, version, methods) {
       interface: this.getContract()
     });
 
-    // we keep a ref to the listener to be able to remove it.
-    channel.onMessageListener = e => {this.onmessage.call(this, channel, e.data);};
-    channel.addEventListener(
-      'message',
-      channel.onMessageListener
-    );
+    //// we keep a ref to the listener to be able to remove it.
+    //channel.onMessageListener = e => {this.onmessage.call(this, channel, e.data);};
+    //channel.addEventListener('message', channel.onMessageListener);
   };
 
   ServerInternal.prototype.unregisterClient = function(id) {
@@ -80,13 +77,15 @@ function createServer(name, version, methods) {
   };
 
   ServerInternal.prototype.disconnectPort = function(port) {
-    debug(this.server.name, 'Unregistering client ', port.name);
-    port.removeEventListener('message', port.onMessageListener);
+    debug(this.server.name, 'Disconnecting port', port);
     // tell the client it's getting disconnected
     port.postMessage({
       type: 'disconnected',
       interface: this.getContract()
     });
+    port.removeEventListener('message', port.onMessageListener);
+    port.onMessageListener = null;
+    port.close();
 
   }
 
@@ -125,7 +124,9 @@ function createServer(name, version, methods) {
   };
 
   ServerInternal.prototype.listen = function() {
-    addEventListener('message', e => this.onglobalmessage(e.data));
+    // keep a ref to this listener to clean it when disconnected.
+    this.onglobalmessageListener = e => this.onglobalmessage(e.data);
+    addEventListener('message', this.onglobalmessageListener);
   };
 
   ServerInternal.prototype.register = function() {
@@ -143,10 +144,12 @@ function createServer(name, version, methods) {
 
   ServerInternal.prototype.unregister = function() {
     debug(this.server.name, 'Unregistering server');
-    this.ports.forEach(port => this.disconnectPort(port));
+    // cleaning stuff
+    while (this.ports.length) {
+     this.disconnectPort(this.ports.pop());
+    }
 
-    // empty the array
-    this.ports.length = 0;
+    removeEventListener('message', this.onglobalmessageListener);
 
     // and now please kill me!
     var smuggler = new BroadcastChannel('smuggler');
@@ -214,7 +217,7 @@ function createServer(name, version, methods) {
  * Utils
  */
 function debug() {
-  //console.log.bind(console, '[server]').apply(console, arguments);
+  console.log.bind(console, '[server]').apply(console, arguments);
 }
 
 

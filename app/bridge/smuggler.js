@@ -205,11 +205,11 @@
   }
 
   function unregisterServerForContract(server, name) {
-    server.ready = false;
     server.postMessage({
       contract: name,
       type: 'unregisterServer'
     });
+    server.ready = false;
   }
 
   function killServerForContract(name) {

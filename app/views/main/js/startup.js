@@ -55,6 +55,7 @@ setTimeout(function() {
 
   function registerClients() {
     window.logicAPI = new Client('logic');
+    window.eventAPI = new Client('events');
   }
 
 
