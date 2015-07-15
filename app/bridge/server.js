@@ -23,7 +23,7 @@ function createServer(name, version, methods) {
     this.server = server;
     this.methods = methods;
 
-    this.enforceContract();
+    //this.enforceContract();
 
     this.ports = [];
 
@@ -39,8 +39,8 @@ function createServer(name, version, methods) {
 
     if (data.type === 'register') {
       this.registerClient(data.uuid);
-    } else if (data.type === 'unregister') {
-      this.unregisterClient(data.uuid);
+    //} else if (data.type === 'unregister') {
+      //this.unregisterClient(data.uuid);
     } else if (data.type === 'unregisterServer') {
       this.unregister();
     }
@@ -61,20 +61,20 @@ function createServer(name, version, methods) {
     //channel.addEventListener('message', channel.onMessageListener);
   };
 
-  ServerInternal.prototype.unregisterClient = function(id) {
-    debug(this.server.name, 'Unregistering client', id);
-    // find the old channel and remove it from this.ports
-    var index = 0;
-    while (index < this.ports.length && this.ports[index].name !== id) {
-      index++;
-    }
+  //ServerInternal.prototype.unregisterClient = function(id) {
+    //debug(this.server.name, 'Unregistering client', id);
+    //// find the old channel and remove it from this.ports
+    //var index = 0;
+    //while (index < this.ports.length && this.ports[index].name !== id) {
+      //index++;
+    //}
 
-    if (index < this.ports.length) {
-      this.disconnectPort(this.ports.splice(index, 1)[0]);
-    } else {
-      debug('Couldn\'t find any client to remove with id ', id);
-    }
-  };
+    //if (index < this.ports.length) {
+      //this.disconnectPort(this.ports.splice(index, 1)[0]);
+    //} else {
+      //debug('Couldn\'t find any client to remove with id ', id);
+    //}
+  //};
 
   ServerInternal.prototype.disconnectPort = function(port) {
     debug(this.server.name, 'Disconnecting port', port);
@@ -89,35 +89,35 @@ function createServer(name, version, methods) {
 
   }
 
-  ServerInternal.prototype.onmessage = function(port, data) {
-    debug(this.server.name, 'onmessage: ', data);
+  //ServerInternal.prototype.onmessage = function(port, data) {
+    //debug(this.server.name, 'onmessage: ', data);
 
-    var fn = this.methods[data.method];
-    if (!fn) {
-      throw new Error(kErrors.ContractNotDeclared + data.method);
-    }
+    //var fn = this.methods[data.method];
+    //if (!fn) {
+      //throw new Error(kErrors.ContractNotDeclared + data.method);
+    //}
 
-    var args = data.args || [];
+    //var args = data.args || [];
 
-    data.port = port;
-    Promise.resolve(fn.apply(null, args)).then((result) => {
-      this.respond(data, result);
-    });
-  };
+    //data.port = port;
+    //Promise.resolve(fn.apply(null, args)).then((result) => {
+      //this.respond(data, result);
+    //});
+  //};
 
-  ServerInternal.prototype.respond = function(request, result) {
-    debug(this.server.name, 'respond', result);
+  //ServerInternal.prototype.respond = function(request, result) {
+    //debug(this.server.name, 'respond', result);
 
-    var response = request;
-    response.result = result;
-    this.send(response);
-  };
+    //var response = request;
+    //response.result = result;
+    //this.send(response);
+  //};
 
-  ServerInternal.prototype.send = function(data) {
-    var port = data.port;
-    delete data.port;
-    port.postMessage(data);
-  };
+  //ServerInternal.prototype.send = function(data) {
+    //var port = data.port;
+    //delete data.port;
+    //port.postMessage(data);
+  //};
 
   ServerInternal.prototype.broadcast = function(packet) {
     this.ports.forEach(port => port.postMessage(packet));
@@ -163,23 +163,23 @@ function createServer(name, version, methods) {
 
   };
 
-  ServerInternal.prototype.enforceContract = function() {
-    var contract = this.getContract();
+  //ServerInternal.prototype.enforceContract = function() {
+    //var contract = this.getContract();
 
-    // Ensure that all contracts methods are implemented.
-    for (var method in contract.methods) {
-      if (!(method in this.methods)) {
-        throw new Error(kErrors.ContractNotImplemented + method);
-      }
-    };
+    //// Ensure that all contracts methods are implemented.
+    //for (var method in contract.methods) {
+      //if (!(method in this.methods)) {
+        //throw new Error(kErrors.ContractNotImplemented + method);
+      //}
+    //};
 
-    // Ensure that only contracts methods are implemented.
-    for (var method in this.methods) {
-      if (!(method in contract.methods)) {
-        throw new Error(kErrors.ContractNotDeclared + method);
-      }
-    }
-  };
+    //// Ensure that only contracts methods are implemented.
+    //for (var method in this.methods) {
+      //if (!(method in contract.methods)) {
+        //throw new Error(kErrors.ContractNotDeclared + method);
+      //}
+    //}
+  //};
 
   ServerInternal.prototype.getContract = function() {
     if (!(this.server.name in self.contracts)) {
