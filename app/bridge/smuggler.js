@@ -21,14 +21,15 @@
 
       var ready = false;
       var events = [];
-      w.addEventListener('load', function() {
+      var loadListener = function() {
         ready = true;
 
         for (var i = 0; i < events.length; i++) {
           w.contentWindow.postMessage(events[i], '*');
         }
         events = [];
-      });
+      };
+      w.addEventListener('load', loadListener);
 
       setTimeout(function() {
         document.body.appendChild(w);
@@ -45,6 +46,7 @@
         terminate: function() {
           w.src = "about:blank"; // trick to get an unload event in iframe
           document.body.removeChild(w);
+          w.removeEventListener('load', loadListener);
           w = null;
         }
       }
