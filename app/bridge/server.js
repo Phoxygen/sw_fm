@@ -58,6 +58,7 @@ function createServer(name, version, methods) {
   ServerInternal.prototype.registerClient = function(id) {
     debug(this.server.name, 'Registering client ' + id);
     var channel = new BroadcastChannel(id);
+    debug(this.server.name, 'channel created', channel);
     this.ports.push(channel);
 
     channel.postMessage({
@@ -92,6 +93,7 @@ function createServer(name, version, methods) {
         type: 'disconnected',
         interface: this.getContract()
       });
+      debug(this.server.name, 'closing channel', removedChannel);
       removedChannel.close();
     } else {
       debug('Couldn\'t find any client to remove with id ', id);
@@ -99,6 +101,7 @@ function createServer(name, version, methods) {
 
     // Do we have any client left?
     if (this.ports.length === 0) {
+      debug(this.server.name, 'No more client: unregistering');
       // don't accept new clients
       this.unlisten();
       // tell the smuggler we are useless
@@ -214,7 +217,7 @@ function createServer(name, version, methods) {
  * Utils
  */
 function debug() {
-  //console.log.bind(console, '[server]').apply(console, arguments);
+  console.log.bind(console, '[server]').apply(console, arguments);
 }
 
 
