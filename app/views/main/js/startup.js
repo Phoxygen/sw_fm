@@ -11,7 +11,7 @@ setTimeout(function() {
   Utils.importScript(kPaths.registrations)
     .then(getConfiguration.bind(null, kPaths.configuration))
     .then(registerServers)
-    .then(registerServiceWorker)
+    //.then(registerServiceWorker)
     .then(Utils.importScript.bind(null, kPaths.client))
     .then(registerClients)
     .then(attachListeners);

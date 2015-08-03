@@ -19,17 +19,19 @@
       w.hidden = true;
       w.src = url;
 
-      var ready = false;
-      var events = [];
-      var loadListener = function() {
-        ready = true;
+      //var ready = false;
+      //var events = [];
+      //var loadListener = function() {
+        //ready = true;
 
-        for (var i = 0; i < events.length; i++) {
-          w.contentWindow.postMessage(events[i], '*');
-        }
-        events = [];
-      };
-      w.addEventListener('load', loadListener);
+        //debug('loadListener', events);
+
+        //for (var i = 0; i < events.length; i++) {
+          //w.contentWindow.postMessage(events[i], '*');
+        //}
+        //events = [];
+      //};
+      //w.addEventListener('load', loadListener);
 
       setTimeout(function() {
         document.body.appendChild(w);
@@ -37,16 +39,18 @@
 
       return {
         postMessage: function(msg) {
-          if (ready) {
+          //if (ready) {
+            debug('postmessage ready');
             w.contentWindow.postMessage(msg, '*');
-          } else {
-            events.push(msg);
-          }
+          //} else {
+            //debug('postmessage not ready');
+            //events.push(msg);
+          //}
         },
         terminate: function() {
-          w.src = "about:blank"; // trick to get an unload event in iframe
+          //w.src = "about:blank"; // trick to get an unload event in iframe
+          //w.removeEventListener('load', loadListener);
           document.body.removeChild(w);
-          w.removeEventListener('load', loadListener);
           w = null;
         }
       }
