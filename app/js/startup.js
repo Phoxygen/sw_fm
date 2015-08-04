@@ -1,7 +1,7 @@
 setTimeout(function() {
   'use strict';
 
-  var kRootPath = '../../';
+  var kRootPath = './';
   var kPaths = {
     configuration: getPath('configuration.json'),
     registrations: getPath('bridge/smuggler.js'),

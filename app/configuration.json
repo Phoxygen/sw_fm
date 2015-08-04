@@ -1,5 +1,5 @@
 {
-  "../../servers/main/logic/index.html": {
+  "servers/index.html": {
     "contracts": ["logic"],
     "type": "Window"
   }
