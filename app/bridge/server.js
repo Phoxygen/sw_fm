@@ -23,20 +23,6 @@ function createServer(name) {
 
     this.listen();
     // the server register itself when it is ready
-    this.register();
-  }
-
-  Server.prototype.onglobalmessage = function(data) {
-
-    if (data.type === 'register') {
-      this.registerClient();
-    } else if (data.type === 'unregister') {
-      this.unregisterClient();
-    }
-  };
-
-  Server.prototype.registerClient = function() {
-    debug(this.name, 'Registering client');
     this.port = new BroadcastChannel('logic');
 
     // we keep a ref to the listener to be able to remove it.
@@ -45,6 +31,13 @@ function createServer(name) {
       'message',
       this.port.onMessageListener
     );
+  }
+
+  Server.prototype.onglobalmessage = function(data) {
+
+    if (data.type === 'unregister') {
+      this.unregisterClient();
+    }
   };
 
   Server.prototype.unregisterClient = function() {
@@ -70,11 +63,6 @@ function createServer(name) {
   Server.prototype.unlisten = function() {
     removeEventListener('message', this.onglobalmessageListener);
     this.onglobalmessageListener = null;
-  };
-
-  Server.prototype.register = function() {
-    debug(this.name, ' [connect]');
-    sendToSmuggler(this, 'register');
   };
 
   Server.prototype.unregister = function() {

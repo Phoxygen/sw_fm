@@ -6,14 +6,22 @@
     <meta name="theme-color" content="#242d33">
 
     <script type="text/javascript">
-      (function() {
-        'use strict';
+      function getClient() {
 
-        var server;
-        var client;
+        var iframe = null;
+        var channel = new BroadcastChannel('smuggler');
+        channel.onmessage = function(msg) {
+          switch (msg.data.name) {
+            case 'unregister':
+              debug('Unregistering server');
+              iframe.terminate();
+              iframe = null;
+              break;
 
-        function debug(str, args) {
-          console.log.bind(console, '[smuggler]').apply(console, arguments);
+            default:
+              throw new Error('Not Implemented: ' + msg.data.name);
+              break;
+          }
         };
 
         function getServer(url) {
@@ -35,102 +43,6 @@
               w = null;
             }
           };
-        };
-
-        var channel = new BroadcastChannel('smuggler');
-        channel.onmessage = function(msg) {
-          switch (msg.data.name) {
-            case 'register':
-              register(msg.data);
-              break;
-
-            case 'unregister':
-              unregister(msg.data);
-              break;
-
-            default:
-              throw new Error('Not Implemented: ' + msg.data.name);
-              break;
-          }
-        };
-
-
-        // TODO: Add version support
-        var kEmptyRegistration = 'Empty registration are not allowed.';
-        function register(registration) {
-          if (!registration) {
-            throw new Error(kEmptyRegistration);
-          }
-
-          switch (registration.type) {
-            case 'client':
-              client = registration.uuid;
-              server = getServer('servers/index.html');
-              server.registered = false;
-
-              break;
-
-            case 'server':
-
-              // start can fail
-              if (server) {
-                server.postMessage({ type: 'register' });
-                server.ready = true;
-              }
-
-              break;
-
-            default:
-              throw new Error(registration.type + ': ' + kUnknowRegistrationType);
-              break;
-          }
-        };
-
-        function unregister(registration) {
-
-          switch (registration.type) {
-            case 'client':
-              debug('Unregistering client');
-              // unregister in the smuggler
-              client = null;
-              if (server && server.ready) {
-                // unregister in the server
-                server.postMessage({ type: 'unregister' });
-              }
-              break;
-            case 'server':
-              debug('Unregistering server');
-              if (server) {
-                server.ready = false;
-                server.terminate();
-                server = null;
-              }
-              break;
-            default:
-              throw new Error(registration.type + ': ' + kUnknowRegistrationType);
-              break;
-          }
-        };
-
-      })();
-
-      (function(exports) {
-      'use strict';
-
-      function ClientFactory() {
-        return createNewClient();
-      }
-
-      function createNewClient() {
-
-        function sendToSmuggler(clientInternal, command) {
-          debug('sendToSmuggler', command);
-          var smuggler = new BroadcastChannel('smuggler');
-          smuggler.postMessage({
-            name: command,
-            type: 'client',
-          });
-          smuggler.close();
         }
 
         /*
@@ -138,45 +50,33 @@
          */
         function Client() {
           this.server = null;
-          this.connect();
-        }
-
-        Client.prototype.unregister = function() {
-          sendToSmuggler(this, 'unregister');
-        };
-
-        Client.prototype.connect = function() {
           debug(' [connect]');
 
-          sendToSmuggler(this, 'register');
+          iframe = getServer('servers/index.html');
+          iframe.registered = false;
+
           this.server = new BroadcastChannel('logic');
-          this.listen();
-        };
+          this.server.listener = e => this.onmessage(e);
+          this.server.addEventListener('message', this.server.listener);
+        }
 
         Client.prototype.disconnect = function() {
           debug(' [disconnect]');
-          this.unregister();
+          iframe.postMessage({ type: 'unregister' });
+          //this.unregister();
+          //this.iframe.terminate();
         }
-
-        Client.prototype.ondisconnected = function() {
-          debug(' [disconnected]');
-
-          this.server.removeEventListener('message', this.server.listener);
-          this.server.close();
-          this.server = null;
-        };
-
-        Client.prototype.listen = function() {
-          this.server.listener = e => this.onmessage(e);
-          this.server.addEventListener('message', this.server.listener);
-        };
 
         Client.prototype.onmessage = function(e) {
           debug('on message', e.data);
 
           switch (e.data.type) {
             case 'disconnected':
-              this.ondisconnected();
+              debug(' [disconnected]');
+
+              this.server.removeEventListener('message', this.server.listener);
+              this.server.close();
+              this.server = null;
               break;
 
             default:
@@ -199,11 +99,7 @@
       }
 
 
-      exports.Client = ClientFactory;
-      })(this);
     </script>
-    <!--<script async src="bridge/smuggler.js"></script>-->
-    <!--<script async src="bridge/client.js"></script>-->
   </head>
 
   <body>
@@ -214,10 +110,11 @@
     <script type="text/javascript">
       function removeIframe() {
         logicAPI.disconnect();
+        //document.body.removeChild(document.querySelector('iframe'));
       }
 
       setTimeout(function() {
-        window.logicAPI = new Client('logic');
+        window.logicAPI = getClient();
       }, 100);
 
     </script>
