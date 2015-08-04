@@ -1,6 +1,5 @@
 {
   "servers/index.html": {
-    "contracts": ["logic"],
     "type": "Window"
   }
 }

@@ -25,38 +25,19 @@ const kStates = {
 }
 
 function createNewClient(name, version) {
-  /*
-   * Global variables
-   */
-  // request that needs to be sent when receiving the connected event
-  var pendings = {};
-  // waiting for an answer
-  var runnings = {};
 
   function sendToSmuggler(clientInternal, command) {
+    debug('sendToSmuggler', command);
     var kRegistrationChannelName = 'smuggler';
     var smuggler = new BroadcastChannel(kRegistrationChannelName);
     smuggler.postMessage({
       name: command,
       type: 'client',
-      contract: clientInternal.client.name,
       version: clientInternal.client.version,
       uuid: clientInternal.uuid
     });
     smuggler.close();
   }
-
-  /*
-   * Packet
-   */
-  function Packet(id, method, args) {
-    return {
-      uuid: id,
-      method: method,
-      args: args,
-    };
-  }
-
 
    /*
    * Deferred
@@ -70,42 +51,6 @@ function createNewClient(name, version) {
     return deferred;
   }
 
-  /*
-   * RemotePrototype
-   */
-  function RemotePrototype(original) {
-    var self = this;
-
-    var prototype = {
-      get: function(target, method) {
-        return self.invoke(original, method);
-      }
-    };
-
-    return new Proxy({}, prototype);
-  }
-
-  RemotePrototype.prototype.invoke = function(original, method) {
-    return function() {
-
-      // If the proxy method is used for event handling, ensure that
-      // it will call the new prototype.
-      if (method in original) {
-        original[method].apply(original, arguments);
-        return;
-      }
-
-      var id = uuid();
-      var packet = new Packet(id, method, [].slice.call(arguments));
-
-      var deferred = new Deferred();
-      pendings[id] = {
-        packet: packet,
-        deferred: deferred
-      }
-      return deferred.promise;
-    }
-  };
 
   /*
    * ClientInternal
@@ -155,20 +100,13 @@ function createNewClient(name, version) {
     }
   };
 
-  ClientInternal.prototype.onconnected = function(contract) {
+  ClientInternal.prototype.onconnected = function() {
     debug(this.client.name, this.uuid, ' [connected]');
     this.connectionDeferred.resolve(kSuccesses.Connected);
     this.connectionDeferred = null;
 
     if (this.state !== kStates.Connected) {
       this.state = kStates.Connected;
-
-      for (var id in pendings) {
-        this.send(pendings[id].packet);
-        runnings[id] = pendings[id].deferred;
-      }
-
-      mutatePrototype(this.client, this.createPrototype(contract));
     }
   };
 
@@ -211,13 +149,6 @@ function createNewClient(name, version) {
         for (var [fn, eventName] of this.server.listeners) {
           this.server.removeEventListener(eventName, fn);
         }
-        // trash runnings jobs
-        for (var id in runnings) {
-          runnings[id].reject(kErrors.Disconnected);
-          delete runnings[id];
-        }
-        // remove prototype
-        mutatePrototype(this.client, null);
         this.server.close();
         this.server = null;
         this.state = kStates.Disconnected;
@@ -239,47 +170,8 @@ function createNewClient(name, version) {
     this.server.addEventListener('message', listener);
   };
 
-  ClientInternal.prototype.addEventListener = function(name, fn) {
-    this.server.listeners.set(fn, 'broadcast:' + name);
-    this.server.addEventListener('broadcast:' + name, fn);
-  };
-
-  ClientInternal.prototype.removeEventListener = function(name, fn) {
-    this.server.removeEventListener('broadcast:' + name, fn);
-  };
-
   ClientInternal.prototype.dispatchEvent = function(e) {
     this.server.dispatchEvent(e);
-  };
-
-  ClientInternal.prototype.send = function(packet) {
-    debug(this.client.name, this.uuid, 'send', packet);
-    this.server.postMessage(packet);
-  };
-
-  ClientInternal.prototype.request = function(method, args) {
-    debug(this.uuid, 'request', method, args);
-
-    var id = uuid();
-    var packet = new Packet(id, method, args);
-    this.send(packet);
-
-    var deferred = new Deferred();
-    runnings[id] = deferred;
-    return deferred.promise;
-  };
-
-  ClientInternal.prototype.onresponse = function(packet) {
-    debug(this.uuid, 'on response', packet);
-
-    var id = packet.uuid;
-    var promise = runnings[id];
-    if (!promise) {
-      throw new Error(kErrors.NoPromise);
-    }
-    delete runnings[id];
-
-    promise.resolve(packet.result);
   };
 
   ClientInternal.prototype.onmessage = function(e) {
@@ -312,37 +204,6 @@ function createNewClient(name, version) {
     this.server.dispatchEvent(e);
   };
 
-  ClientInternal.prototype.createInterface = function() {
-    throw new Error(kErrors.NotImplemented);
-  };
-
-  ClientInternal.prototype.createPrototype = function(contract) {
-    var prototype = {};
-    for (var name in contract.methods) {
-      var definition = contract.methods[name];
-      debug(this.uuid, 'create method', name, definition);
-      prototype[name] = createMethod(name, definition);
-    }
-
-    var self = this;
-    function createMethod(name, definition) {
-      return function() {
-        // XXX Most of those checks should be performed on the server side.
-        var args = [].slice.call(arguments);
-        var invalidLength = args.length !== definition.args.length;
-        var invalidType = !typesMatch(args, definition.args);
-        if (invalidLength || invalidType) {
-          throw new Error(name + '() called with invalid argument');
-        }
-
-        return self.request(name, args);
-      };
-    }
-
-    return prototype;
-  };
-
-
   /*
    * Client
    */
@@ -350,15 +211,6 @@ function createNewClient(name, version) {
     this.name = name;
     this.version = version;
 
-    mutatePrototype(this, new RemotePrototype(this));
-  };
-
-  Client.prototype.addEventListener = function(name, fn) {
-    internal.addEventListener(name, fn);
-  };
-
-  Client.prototype.removeEventListener = function(name, fn) {
-    internal.removeEventListener(name, callback);
   };
 
   Client.prototype.disconnect = function() {
@@ -382,10 +234,6 @@ function createNewClient(name, version) {
 
 function debug() {
   console.log.bind(console, '[client]').apply(console, arguments);
-}
-
-function mutatePrototype(object, prototype) {
-  Object.setPrototypeOf(Object.getPrototypeOf(object), prototype);
 }
 
 function typesMatch(args, types) {
