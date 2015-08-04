@@ -65,8 +65,6 @@ setTimeout(function() {
 
   function registerClients() {
     window.logicAPI = new Client('logic');
-    // we keep a ref to the events server to prevent it from being unloaded
-    window.eventAPI = new Client('events');
   }
 
 });
