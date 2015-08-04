@@ -26,7 +26,6 @@
 
         function getServer(url) {
           var w = document.createElement('iframe');
-          //w.hidden = true;
           w.src = url;
 
           setTimeout(function() {
@@ -49,22 +48,16 @@
          * Client
          */
         function Client() {
-          this.server = null;
           debug(' [connect]');
 
           iframe = getServer('servers/index.html');
           iframe.registered = false;
 
-          this.server = new BroadcastChannel('logic');
-          this.server.listener = e => this.onmessage(e);
-          this.server.addEventListener('message', this.server.listener);
         }
 
         Client.prototype.disconnect = function() {
           debug(' [disconnect]');
           iframe.postMessage({ type: 'unregister' });
-          //this.unregister();
-          //this.iframe.terminate();
         }
 
         Client.prototype.onmessage = function(e) {
@@ -74,9 +67,6 @@
             case 'disconnected':
               debug(' [disconnected]');
 
-              this.server.removeEventListener('message', this.server.listener);
-              this.server.close();
-              this.server = null;
               break;
 
             default:
