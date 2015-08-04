@@ -24,7 +24,7 @@ function createServer(name, version, methods) {
     this.server = server;
     this.methods = methods;
 
-    this.ports = [];
+    this.port = null;
 
     this.listen();
     // the server register itself when it is ready
@@ -42,54 +42,33 @@ function createServer(name, version, methods) {
 
   ServerInternal.prototype.registerClient = function(id) {
     debug(this.server.name, 'Registering client ' + id);
-    var channel = new BroadcastChannel(id);
-    debug(this.server.name, 'channel created', channel);
-    this.ports.push(channel);
+    this.port = new BroadcastChannel(id);
 
-    channel.postMessage({
+    this.port.postMessage({
       type: 'connected',
     });
 
     // we keep a ref to the listener to be able to remove it.
-    channel.onMessageListener = e => {this.onmessage.call(this, channel, e.data);};
-    channel.addEventListener(
+    this.port.onMessageListener = e => {this.onmessage.call(this, this.port, e.data);};
+    this.port.addEventListener(
       'message',
-      channel.onMessageListener
+      this.port.onMessageListener
     );
   };
 
   ServerInternal.prototype.unregisterClient = function(id) {
     debug(this.server.name, 'Unregistering client', id);
-    // find the old channel and remove it from this.ports
-    var index = 0;
-    while (index < this.ports.length && this.ports[index].name !== id) {
-      index++;
-    }
 
-    if (index < this.ports.length) {
-      var removedChannel = this.ports.splice(index, 1)[0];
-      removedChannel.removeEventListener('message', removedChannel.onMessageListener);
-      // tell the client it's getting disconnected
-      // Technically, we don't need to do that, but the client could have pending requests
-      // when it disconnected. Sending a disconnected event make this client able to still deal
-      // with response it might receive between the disconnection request and the disconnected event.
-      removedChannel.postMessage({
-        type: 'disconnected',
-      });
-      debug(this.server.name, 'closing channel', removedChannel);
-      removedChannel.close();
-    } else {
-      debug('Couldn\'t find any client to remove with id ', id);
-    }
-
-    // Do we have any client left?
-    if (this.ports.length === 0) {
-      debug(this.server.name, 'No more client: unregistering');
-      // don't accept new clients
-      this.unlisten();
-      // tell the smuggler we are useless
-      this.unregister();
-    }
+    this.port.removeEventListener('message', this.port.onMessageListener);
+    this.port.postMessage({
+      type: 'disconnected',
+    });
+    this.port.close();
+    this.port = null;
+    // don't accept new clients
+    this.unlisten();
+    // tell the smuggler we are useless
+    this.unregister();
   };
 
   ServerInternal.prototype.listen = function() {
