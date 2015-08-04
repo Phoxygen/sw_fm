@@ -39,10 +39,6 @@ function createServer(name) {
     debug(this.name, 'Registering client');
     this.port = new BroadcastChannel('logic');
 
-    this.port.postMessage({
-      type: 'connected',
-    });
-
     // we keep a ref to the listener to be able to remove it.
     this.port.onMessageListener = e => {this.onmessage.call(this, this.port, e.data);};
     this.port.addEventListener(

@@ -1,35 +1,15 @@
 (function(exports) {
 'use strict';
 
-function ClientFactory(name) {
-  return createNewClient(name);
+function ClientFactory() {
+  return createNewClient();
 }
 
-const kErrors = {
-  NotImplemented: 'Not Implemented.',
-  NoPromise: 'No Promise Found.',
-  Disconnected: 'Client has been disconnected',
-  Connecting: 'Client currently connecting'
-}
-
-const kSuccesses = {
-  Connected: 'Connected',
-  Disconnected: 'Disconnected'
-}
-
-const kStates = {
-  Disconnected: 0,
-  Connecting: 1,
-  Connected: 2,
-  Disconnecting: 3
-}
-
-function createNewClient(name) {
+function createNewClient() {
 
   function sendToSmuggler(clientInternal, command) {
     debug('sendToSmuggler', command);
-    var kRegistrationChannelName = 'smuggler';
-    var smuggler = new BroadcastChannel(kRegistrationChannelName);
+    var smuggler = new BroadcastChannel('smuggler');
     smuggler.postMessage({
       name: command,
       type: 'client',
@@ -37,144 +17,48 @@ function createNewClient(name) {
     smuggler.close();
   }
 
-   /*
-   * Deferred
-   */
-  function Deferred() {
-    var deferred = {};
-    deferred.promise = new Promise(function(resolve, reject) {
-      deferred.resolve = resolve;
-      deferred.reject = reject;
-    });
-    return deferred;
-  }
-
-
   /*
    * Client
    */
-  function Client(name) {
-    this.name = name;
-
+  function Client() {
     this.server = null;
-
-    this.state = kStates.Disconnected;
-    // deferred for connection and disconnection
-    this.connectionDeferred = null;
-
     this.connect();
   }
-
-  Client.prototype.register = function() {
-    sendToSmuggler(this, 'register');
-  };
 
   Client.prototype.unregister = function() {
     sendToSmuggler(this, 'unregister');
   };
 
   Client.prototype.connect = function() {
-    debug(this.name, ' [connect]');
+    debug(' [connect]');
 
-    switch (this.state) {
-      case kStates.Connected:
-        return Promise.resolve(kSuccesses.Connected);
-      case kStates.Connecting:
-        return this.connectionDeferred.promise;
-      case kStates.Disconnecting:
-        return this.connectionDeferred.promise.then(() => this.connect());
-      case kStates.Disconnected:
-        this.state = kStates.Connecting;
-        this.connectionDeferred = new Deferred();
-        this.register();
-        // It might not be the first time we connect
-        this.server = new BroadcastChannel('logic');
-        this.listen();
-        return this.connectionDeferred.promise;
-      default:
-        throw new Error('Unsupported state: ' + this.state);
-        break;
-    }
-  };
-
-  Client.prototype.onconnected = function() {
-    debug(this.name, ' [connected]');
-    this.connectionDeferred.resolve(kSuccesses.Connected);
-    this.connectionDeferred = null;
-
-    if (this.state !== kStates.Connected) {
-      this.state = kStates.Connected;
-    }
+    sendToSmuggler(this, 'register');
+    this.server = new BroadcastChannel('logic');
+    this.listen();
   };
 
   Client.prototype.disconnect = function() {
-    debug(this.name + ' [disconnect]');
-    switch (this.state) {
-      case kStates.Disconnected:
-        return Promise.resolve(kSuccesses.Disconnected);
-      case kStates.Connecting:
-        // we reject disconnection request if we are connecting
-        // to avoid losing any calls
-        return Promise.reject(kErrors.Connecting);
-      case kStates.Disconnecting:
-        return this.connectionDeferred.promise;
-      case kStates.Connected:
-        this.state = kStates.Disconnecting;
-        this.connectionDeferred = new Deferred();
-        this.unregister();
-        return this.connectionDeferred.promise;
-      default:
-        throw new Error('Unsupported state: ' + this.state);
-        break;
-    }
+    debug(' [disconnect]');
+    this.unregister();
   }
 
   Client.prototype.ondisconnected = function() {
-    debug(this.name + ' [disconnected]');
+    debug(' [disconnected]');
 
-    switch (this.state) {
-      case kStates.Disconnected:
-        // nothing to do :-)
-        break;
-      case kStates.Connecting:
-        this.connectionDeferred.reject(kErrors.Disconnected);
-        break;
-      // we should not receive disconnected without requesting it, but...
-      case kStates.Connected:
-      case kStates.Disconnecting:
-        // unlisten
-        for (var [fn, eventName] of this.server.listeners) {
-          this.server.removeEventListener(eventName, fn);
-        }
-        this.server.close();
-        this.server = null;
-        this.state = kStates.Disconnected;
-        if (this.connectionDeferred) {
-          this.connectionDeferred.resolve(kSuccesses.Disconnected);
-        }
-        break;
-      default:
-        throw new Error('Unsupported state: ' + this.state);
-        break;
-    }
+    this.server.removeEventListener('message', this.server.listener);
+    this.server.close();
+    this.server = null;
   };
 
   Client.prototype.listen = function() {
-    // we maintain a map of listener <-> event to be able to remove them
-    this.server.listeners = new Map();
-    var listener = e => this.onmessage(e);
-    this.server.listeners.set(listener, 'message');
-    this.server.addEventListener('message', listener);
+    this.server.listener = e => this.onmessage(e);
+    this.server.addEventListener('message', this.server.listener);
   };
 
   Client.prototype.onmessage = function(e) {
-    debug(this.name, 'on message', e.data);
+    debug('on message', e.data);
 
     switch (e.data.type) {
-      case 'connected':
-        this.onconnected(e.data.interface);
-        break;
-
       case 'disconnected':
         this.ondisconnected();
         break;
@@ -185,7 +69,7 @@ function createNewClient(name) {
     }
   };
 
-  var client = new Client(name);
+  var client = new Client();
 
   return client;
 }
