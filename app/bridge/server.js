@@ -1,28 +1,23 @@
 (function(exports) {
 'use strict';
 
-function ServerFactory(name, version, methods) {
-  return createServer(name, version, methods);
+function ServerFactory(name) {
+  return createServer(name);
 }
 
-function sendToSmuggler(serverInternal, command) {
+function sendToSmuggler(server, command) {
   var smuggler = new BroadcastChannel('smuggler');
   smuggler.postMessage({
     name: command,
     type: 'server',
-    contract: serverInternal.server.name,
-    version: serverInternal.server.version,
   });
   smuggler.close();
 }
 
-function createServer(name, version, methods) {
-  /*
-   * ServerInternal
-   */
-  function ServerInternal(server, methods) {
-    this.server = server;
-    this.methods = methods;
+function createServer(name) {
+
+  function Server(name) {
+    this.name = name;
 
     this.port = null;
 
@@ -31,18 +26,18 @@ function createServer(name, version, methods) {
     this.register();
   }
 
-  ServerInternal.prototype.onglobalmessage = function(data) {
+  Server.prototype.onglobalmessage = function(data) {
 
     if (data.type === 'register') {
-      this.registerClient(data.uuid);
+      this.registerClient();
     } else if (data.type === 'unregister') {
-      this.unregisterClient(data.uuid);
+      this.unregisterClient();
     }
   };
 
-  ServerInternal.prototype.registerClient = function(id) {
-    debug(this.server.name, 'Registering client ' + id);
-    this.port = new BroadcastChannel(id);
+  Server.prototype.registerClient = function() {
+    debug(this.name, 'Registering client');
+    this.port = new BroadcastChannel('logic');
 
     this.port.postMessage({
       type: 'connected',
@@ -56,8 +51,8 @@ function createServer(name, version, methods) {
     );
   };
 
-  ServerInternal.prototype.unregisterClient = function(id) {
-    debug(this.server.name, 'Unregistering client', id);
+  Server.prototype.unregisterClient = function() {
+    debug(this.name, 'Unregistering client');
 
     this.port.removeEventListener('message', this.port.onMessageListener);
     this.port.postMessage({
@@ -71,36 +66,27 @@ function createServer(name, version, methods) {
     this.unregister();
   };
 
-  ServerInternal.prototype.listen = function() {
+  Server.prototype.listen = function() {
     this.onglobalmessageListener = e => this.onglobalmessage(e.data);
     addEventListener('message', this.onglobalmessageListener);
   };
 
-  ServerInternal.prototype.unlisten = function() {
+  Server.prototype.unlisten = function() {
     removeEventListener('message', this.onglobalmessageListener);
     this.onglobalmessageListener = null;
   };
 
-  ServerInternal.prototype.register = function() {
-    debug(this.server.name, ' [connect]');
+  Server.prototype.register = function() {
+    debug(this.name, ' [connect]');
     sendToSmuggler(this, 'register');
   };
 
-  ServerInternal.prototype.unregister = function() {
-    debug(this.server.name, 'Unregistering server ');
+  Server.prototype.unregister = function() {
+    debug(this.name, 'Unregistering server ');
     sendToSmuggler(this, 'unregister');
   };
 
-  /*
-   * Server
-   */
-  function Server(name, version) {
-    this.name = name;
-    this.version = version;
-  }
-
-  var server = new Server(name, version);
-  var internal = new ServerInternal(server, methods);
+  var server = new Server(name);
 
   return server;
 }

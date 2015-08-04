@@ -1,8 +1,8 @@
 (function(exports) {
 'use strict';
 
-function ClientFactory(name, version) {
-  return createNewClient(name, version);
+function ClientFactory(name) {
+  return createNewClient(name);
 }
 
 const kErrors = {
@@ -24,7 +24,7 @@ const kStates = {
   Disconnecting: 3
 }
 
-function createNewClient(name, version) {
+function createNewClient(name) {
 
   function sendToSmuggler(clientInternal, command) {
     debug('sendToSmuggler', command);
@@ -33,8 +33,6 @@ function createNewClient(name, version) {
     smuggler.postMessage({
       name: command,
       type: 'client',
-      version: clientInternal.client.version,
-      uuid: clientInternal.uuid
     });
     smuggler.close();
   }
@@ -53,11 +51,10 @@ function createNewClient(name, version) {
 
 
   /*
-   * ClientInternal
+   * Client
    */
-  function ClientInternal(client) {
-    this.client = client;
-    this.uuid = uuid();
+  function Client(name) {
+    this.name = name;
 
     this.server = null;
 
@@ -68,16 +65,16 @@ function createNewClient(name, version) {
     this.connect();
   }
 
-  ClientInternal.prototype.register = function() {
+  Client.prototype.register = function() {
     sendToSmuggler(this, 'register');
   };
 
-  ClientInternal.prototype.unregister = function() {
+  Client.prototype.unregister = function() {
     sendToSmuggler(this, 'unregister');
   };
 
-  ClientInternal.prototype.connect = function() {
-    debug(this.client.name, this.uuid + ' [connect]');
+  Client.prototype.connect = function() {
+    debug(this.name, ' [connect]');
 
     switch (this.state) {
       case kStates.Connected:
@@ -91,7 +88,7 @@ function createNewClient(name, version) {
         this.connectionDeferred = new Deferred();
         this.register();
         // It might not be the first time we connect
-        this.server = new BroadcastChannel(this.uuid);
+        this.server = new BroadcastChannel('logic');
         this.listen();
         return this.connectionDeferred.promise;
       default:
@@ -100,8 +97,8 @@ function createNewClient(name, version) {
     }
   };
 
-  ClientInternal.prototype.onconnected = function() {
-    debug(this.client.name, this.uuid, ' [connected]');
+  Client.prototype.onconnected = function() {
+    debug(this.name, ' [connected]');
     this.connectionDeferred.resolve(kSuccesses.Connected);
     this.connectionDeferred = null;
 
@@ -110,8 +107,8 @@ function createNewClient(name, version) {
     }
   };
 
-  ClientInternal.prototype.disconnect = function() {
-    debug(this.client.name + ' [disconnect]');
+  Client.prototype.disconnect = function() {
+    debug(this.name + ' [disconnect]');
     switch (this.state) {
       case kStates.Disconnected:
         return Promise.resolve(kSuccesses.Disconnected);
@@ -132,8 +129,8 @@ function createNewClient(name, version) {
     }
   }
 
-  ClientInternal.prototype.ondisconnected = function() {
-    debug(this.client.name + ' [disconnected]');
+  Client.prototype.ondisconnected = function() {
+    debug(this.name + ' [disconnected]');
 
     switch (this.state) {
       case kStates.Disconnected:
@@ -162,7 +159,7 @@ function createNewClient(name, version) {
     }
   };
 
-  ClientInternal.prototype.listen = function() {
+  Client.prototype.listen = function() {
     // we maintain a map of listener <-> event to be able to remove them
     this.server.listeners = new Map();
     var listener = e => this.onmessage(e);
@@ -170,8 +167,8 @@ function createNewClient(name, version) {
     this.server.addEventListener('message', listener);
   };
 
-  ClientInternal.prototype.onmessage = function(e) {
-    debug(this.client.name, this.uuid, 'on message', e.data);
+  Client.prototype.onmessage = function(e) {
+    debug(this.name, 'on message', e.data);
 
     switch (e.data.type) {
       case 'connected':
@@ -188,25 +185,7 @@ function createNewClient(name, version) {
     }
   };
 
-  /*
-   * Client
-   */
-  function Client(name, version) {
-    this.name = name;
-    this.version = version;
-
-  };
-
-  Client.prototype.disconnect = function() {
-    return internal.disconnect();
-  }
-
-  Client.prototype.connect = function() {
-    return internal.connect();
-  }
-
-  var client = new Client(name, version);
-  var internal = new ClientInternal(client);
+  var client = new Client(name);
 
   return client;
 }
@@ -220,27 +199,6 @@ function debug() {
   console.log.bind(console, '[client]').apply(console, arguments);
 }
 
-function typesMatch(args, types) {
-  for (var i = 0, l = args.length; i < l; i++) {
-    if (typeof args[i] !== types[i]) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
-function uuid(){
-  var timestamp = Date.now();
-  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(
-    /[xy]/g,
-    function onEachCharacter(c) {
-      var r = (timestamp + Math.random() * 16) % 16 | 0;
-      timestamp = Math.floor(timestamp / 16);
-      return (c == 'x' ? r : (r&0x7|0x8)).toString(16);
-    }
-  );
-}
 
 exports.Client = ClientFactory;
 })(this);

@@ -46,32 +46,6 @@
     }
   };
 
-  function startServer() {
-
-    // check if a starting or started server
-    // is already fullfilling this contract
-    if (!server) {
-      // otherwise start it
-      debug('startServer: Starting server ');
-      server = getServer('servers/index.html');
-      server.registered = false;
-    }
-
-  }
-
-  function registerClientToServer(server, clientUuid) {
-    server.postMessage({
-      uuid: clientUuid,
-      type: 'register'
-    });
-  }
-
-  function unregisterClientToServer(server, clientUuid) {
-    server.postMessage({
-      uuid: clientUuid,
-      type: 'unregister'
-    });
-  }
 
   // TODO: Add version support
   var kEmptyRegistration = 'Empty registration are not allowed.';
@@ -83,12 +57,8 @@
     switch (registration.type) {
       case 'client':
         client = registration.uuid;
-
-        if (server && server.ready) {
-          registerClientToServer(server, registration.uuid);
-        } else {
-          startServer();
-        }
+        server = getServer('servers/index.html');
+        server.registered = false;
 
         break;
 
@@ -96,9 +66,7 @@
 
         // start can fail
         if (server) {
-          if (client) {
-            registerClientToServer(server, client);
-          }
+          server.postMessage({ type: 'register' });
           server.ready = true;
         }
 
@@ -114,13 +82,12 @@
 
     switch (registration.type) {
       case 'client':
-        var uuid = registration.uuid;
-        debug('Unregistering client  with uuid ' + uuid);
+        debug('Unregistering client');
         // unregister in the smuggler
         client = null;
         if (server && server.ready) {
           // unregister in the server
-          unregisterClientToServer(server, uuid);
+          server.postMessage({ type: 'unregister' });
         }
         break;
       case 'server':
