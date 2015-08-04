@@ -12,22 +12,19 @@ function debug() {
   console.log.bind(console, '[server]').apply(console, arguments);
 }
 
-var onglobalmessageListener = e => onglobalmessage(e.data);
 var port = new BroadcastChannel('logic');
 function Server() {
-  addEventListener('message', onglobalmessageListener);
-  // the server register itself when it is ready
-
+  addEventListener('message', onglobalmessage);
   // we keep a ref to the listener to be able to remove it.
-  port.onMessageListener = e => {this.onmessage.call(this, this.port, e.data);};
+  port.onMessageListener = e => {console.log('got message', e);};
   port.addEventListener(
     'message',
     port.onMessageListener
   );
 }
 
-function onglobalmessage(data) {
-  if (data.type === 'unregister') {
+function onglobalmessage(e) {
+  if (e.data.type === 'unregister') {
     debug('Unregistering client');
 
     port.removeEventListener('message', port.onMessageListener);
@@ -35,8 +32,7 @@ function onglobalmessage(data) {
     port.close();
     port = null;
     // don't accept new clients
-    removeEventListener('message', onglobalmessageListener);
-    onglobalmessageListener = null;
+    removeEventListener('message', onglobalmessage);
     // tell the smuggler we are useless
     sendToSmuggler('unregister');
   }
