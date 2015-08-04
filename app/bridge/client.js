@@ -170,10 +170,6 @@ function createNewClient(name, version) {
     this.server.addEventListener('message', listener);
   };
 
-  ClientInternal.prototype.dispatchEvent = function(e) {
-    this.server.dispatchEvent(e);
-  };
-
   ClientInternal.prototype.onmessage = function(e) {
     debug(this.client.name, this.uuid, 'on message', e.data);
 
@@ -186,22 +182,10 @@ function createNewClient(name, version) {
         this.ondisconnected();
         break;
 
-      case 'broadcast':
-        this.onbroadcast(e.data);
-        break;
-
       default:
-        this.onresponse(e.data);
+        throw new Error('Not implemented', e.data);
         break;
     }
-  };
-
-  ClientInternal.prototype.onbroadcast = function(packet) {
-    debug(this.uuid, 'on broadcast', packet);
-
-    var e = new CustomEvent('broadcast:' + packet.name);
-    e.data = packet.data;
-    this.server.dispatchEvent(e);
   };
 
   /*
