@@ -9,69 +9,53 @@
       Remove the iframe
     </button>
     <script type="text/javascript">
-      function getClient() {
 
-        var iframe = null;
-        var channel = new BroadcastChannel('smuggler');
-        channel.onmessage = function(msg) {
-          switch (msg.data.name) {
-            case 'unregister':
-              debug('Unregistering server');
-              iframe.terminate();
-              iframe = null;
-              break;
+      var iframe = null;
+      var channel = new BroadcastChannel('smuggler');
+      channel.onmessage = function(msg) {
+        switch (msg.data.name) {
+          case 'unregister':
+            debug('Unregistering server');
+            iframe.terminate();
+            iframe = null;
+            break;
 
-            default:
-              throw new Error('Not Implemented: ' + msg.data.name);
-              break;
+          default:
+            throw new Error('Not Implemented: ' + msg.data.name);
+            break;
+        }
+      };
+
+      function getServer(url) {
+        var w = document.createElement('iframe');
+        w.src = url;
+
+        setTimeout(function() {
+          document.body.appendChild(w);
+        });
+
+        return {
+          postMessage: function(msg) {
+            debug('postmessage ready');
+            w.contentWindow.postMessage(msg, '*');
+          },
+          terminate: function() {
+            document.body.removeChild(w);
+            w = null;
           }
         };
-
-        function getServer(url) {
-          var w = document.createElement('iframe');
-          w.src = url;
-
-          setTimeout(function() {
-            document.body.appendChild(w);
-          });
-
-          return {
-            postMessage: function(msg) {
-              debug('postmessage ready');
-              w.contentWindow.postMessage(msg, '*');
-            },
-            terminate: function() {
-              document.body.removeChild(w);
-              w = null;
-            }
-          };
-        }
-
-        /*
-         * Client
-         */
-        function Client() {
-          debug(' [connect]');
-          iframe = getServer('servers/index.html');
-          iframe.registered = false;
-        }
-
-        Client.prototype.disconnect = function() {
-          debug(' [disconnect]');
-          iframe.postMessage({ type: 'unregister' });
-        }
-
-        return new Client();
       }
 
-      window.client = getClient();
+      iframe = getServer('servers/index.html');
+      iframe.registered = false;
+
 
       function debug() {
         console.log.bind(console, '[client]').apply(console, arguments);
       }
 
       function removeIframe() {
-        window.client.disconnect();
+        iframe.postMessage({ type: 'unregister' });
       }
     </script>
   </body>
