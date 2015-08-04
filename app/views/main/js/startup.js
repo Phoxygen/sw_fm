@@ -8,14 +8,24 @@ setTimeout(function() {
     client: getPath('bridge/client.js')
   };
 
-  Utils.importScript(kPaths.registrations)
+  importScript(kPaths.registrations)
     .then(getConfiguration.bind(null, kPaths.configuration))
     .then(registerServers)
     //.then(registerServiceWorker)
-    .then(Utils.importScript.bind(null, kPaths.client))
+    .then(importScript.bind(null, kPaths.client))
     .then(registerClients);
     //.then(attachListeners);
 
+  function importScript(src) {
+    var script = document.createElement('script');
+    script.src = src;
+    document.head.appendChild(script);
+
+    return new Promise(function(resolve, reject) {
+      script.addEventListener('load', resolve);
+      script.addEventListener('error', reject);
+    });
+  }
 
   function debug(str) {
     console.log.call(console, '[startup] ', str);
