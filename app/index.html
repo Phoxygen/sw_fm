@@ -1,10 +1,13 @@
 <!DOCTYPE html>
 <html>
   <head>
-    <meta name="viewport" content="width=device-width, user-scalable=no, initial-scale=1">
     <meta charset="utf-8" />
-    <meta name="theme-color" content="#242d33">
-
+  </head>
+  <body>
+    <h1>Test leak</h1>
+    <button onclick="removeIframe()">
+      Remove the iframe
+    </button>
     <script type="text/javascript">
       function getClient() {
 
@@ -49,10 +52,8 @@
          */
         function Client() {
           debug(' [connect]');
-
           iframe = getServer('servers/index.html');
           iframe.registered = false;
-
         }
 
         Client.prototype.disconnect = function() {
@@ -60,53 +61,18 @@
           iframe.postMessage({ type: 'unregister' });
         }
 
-        Client.prototype.onmessage = function(e) {
-          debug('on message', e.data);
-
-          switch (e.data.type) {
-            case 'disconnected':
-              debug(' [disconnected]');
-
-              break;
-
-            default:
-              throw new Error('Not implemented', e.data);
-              break;
-          }
-        };
-
-        var client = new Client();
-
-        return client;
+        return new Client();
       }
 
-      /*
-       * Utils
-       */
+      window.client = getClient();
 
       function debug() {
         console.log.bind(console, '[client]').apply(console, arguments);
       }
 
-
-    </script>
-  </head>
-
-  <body>
-    <h1>Test leak</h1>
-    <button onclick="removeIframe()">
-      Remove the iframe
-    </button>
-    <script type="text/javascript">
       function removeIframe() {
-        logicAPI.disconnect();
-        //document.body.removeChild(document.querySelector('iframe'));
+        window.client.disconnect();
       }
-
-      setTimeout(function() {
-        window.logicAPI = getClient();
-      }, 100);
-
     </script>
   </body>
 </html>
