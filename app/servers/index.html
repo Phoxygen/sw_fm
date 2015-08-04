@@ -1,8 +1,9 @@
 <!doctype html>
 <html>
-  <head>
-    <script src="js/startup.js"></script>
-  </head>
   <body>
+    <script>
+      var port = new BroadcastChannel('logic');
+      port.foo = 'leak';
+    </script>
   </body>
 </html>
