@@ -5,10 +5,24 @@
     <meta charset="utf-8" />
     <meta name="theme-color" content="#242d33">
 
-    <script async src="js/startup.js"></script>
+    <script async src="bridge/smuggler.js"></script>
+    <script async src="bridge/client.js"></script>
   </head>
 
   <body>
     <h1>Test leak</h1>
+    <button onclick="removeIframe()">
+      Remove the iframe
+    </button>
+    <script type="text/javascript">
+      function removeIframe() {
+        logicAPI.disconnect();
+      }
+
+      setTimeout(function() {
+        window.logicAPI = new Client('logic');
+      }, 100);
+
+    </script>
   </body>
 </html>

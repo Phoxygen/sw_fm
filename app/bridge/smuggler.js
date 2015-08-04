@@ -10,7 +10,7 @@
 
   function getServer(url) {
     var w = document.createElement('iframe');
-    w.hidden = true;
+    //w.hidden = true;
     w.src = url;
 
     setTimeout(function() {
